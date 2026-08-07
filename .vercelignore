@@ -1,0 +1,10 @@
+_s*_proof/
+_hero_proof/
+_tools/
+.tools/
+node_modules/
+.git/
+_s10_fg_preview.jpg
+*.log
+.DS_Store
+Thumbs.db
