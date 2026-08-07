@@ -1,0 +1,30 @@
+# Local proof / capture tooling (not production)
+_s*_proof/
+_hero_proof/
+_tools/
+_s10_fg_preview.jpg
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/
+*.log
+
+# Dependencies / env
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Vercel local link metadata (project stays linked via dashboard/git)
+.vercel
+
+# Asset work backups (not referenced by the site)
+assets/*.before-edgefix.png
+assets/*.full.png
+assets/vanta-barbell-base.jpg
+assets/measured-barbell.jpg
