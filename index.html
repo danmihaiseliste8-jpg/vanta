@@ -7315,6 +7315,40 @@
         } catch (errNotify) {}
       }
 
+      var lastLayout = layoutSize();
+      var lastMobile = lastLayout.w <= 900;
+      var viewportTimer;
+
+      /*
+        Fullscreen / F11 / resize: settle layout, then refresh in priority order.
+        Height-only changes must NOT kill the System pin (avoids spacer thrash);
+        width / breakpoint changes still rebuild the rail timeline.
+      */
+      function scheduleViewportRefresh() {
+        clearTimeout(viewportTimer);
+        viewportTimer = setTimeout(function () {
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              var size = layoutSize();
+              var mobile = size.w <= 900;
+              var widthChanged = Math.abs(size.w - lastLayout.w) > 1;
+              var heightChanged = Math.abs(size.h - lastLayout.h) > 1;
+              if (!widthChanged && !heightChanged) return;
+
+              lastLayout = size;
+
+              if (mobile !== lastMobile || widthChanged) {
+                lastMobile = mobile;
+                build({ silent: true });
+              }
+
+              ScrollTrigger.refresh();
+              notifySystemPinReady();
+            });
+          });
+        }, 180);
+      }
+
       function build(options) {
         var silent = options && options.silent;
         if (timeline) {
@@ -7343,6 +7377,8 @@
             scrub: isMobile ? 1.05 : 1.2,
             anticipatePin: 1,
             invalidateOnRefresh: true,
+            /* Refresh before dependent triggers (philosophy reads sys.end). */
+            refreshPriority: 30,
             onUpdate: (self) => {
               const p = self.progress;
               gsap.set(meterFill, { scaleX: p });
@@ -7423,19 +7459,16 @@
       }
 
       build({ silent: true });
+      lastLayout = layoutSize();
+      lastMobile = lastLayout.w <= 900;
 
-      let resizeTimer;
-      window.addEventListener("resize", () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-          build({ silent: true });
-          ScrollTrigger.refresh();
-          notifySystemPinReady();
-        }, 150);
-      });
+      window.addEventListener("resize", scheduleViewportRefresh);
+      document.addEventListener("fullscreenchange", scheduleViewportRefresh);
 
       window.addEventListener("load", () => {
         build({ silent: true });
+        lastLayout = layoutSize();
+        lastMobile = lastLayout.w <= 900;
         ScrollTrigger.refresh();
         notifySystemPinReady();
       }, { once: true });
@@ -7522,7 +7555,7 @@
           Math.round(section.offsetHeight - (window.innerHeight || 0))
         );
         var start = naturalStart;
-        if (sys && typeof sys.end === "number") {
+        if (sys && typeof sys.end === "number" && !isNaN(sys.end)) {
           start = Math.max(naturalStart, Math.round(sys.end));
         }
         return { start: start, end: start + revealDist };
@@ -7551,6 +7584,8 @@
           scrub: true,
           invalidateOnRefresh: true,
           anticipatePin: 0.5,
+          /* After system-horizontal so start reads the final sys.end. */
+          refreshPriority: -30,
           onUpdate: function (self) {
             paintProgress(self.progress);
           },
@@ -7563,15 +7598,23 @@
         rebuilding = false;
       }
 
-      /* Initial create — will be rebuilt once System pin geometry is final */
+      /* Initial create — geometry finalized after System pin is ready */
       build();
 
       var readyTimer;
       function onSystemPinReady() {
         clearTimeout(readyTimer);
         readyTimer = setTimeout(function () {
-          build();
-          ScrollTrigger.refresh();
+          requestAnimationFrame(function () {
+            /*
+              Do not kill/recreate mid-scroll — that corrupts progress when
+              fullscreen changes pin distance. invalidateOnRefresh + lower
+              refreshPriority remeasures start/end after system-horizontal.
+            */
+            ScrollTrigger.refresh();
+            var st = ScrollTrigger.getById("vanta-statement-reveal");
+            paintProgress(st ? st.progress : 0);
+          });
         }, 0);
       }
 
