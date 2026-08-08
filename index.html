@@ -1151,7 +1151,12 @@
       background:
         linear-gradient(180deg, #0c0b0a 0%, #141210 10%, #151310 100%);
       color: var(--ink);
-      overflow: clip;
+      /* Clip horizontal rail overflow only — vertical must stay visible so the
+         System pin-spacer can reserve document height. overflow:clip on both
+         axes makes the pin a containing/clip box and lets Section 4 (higher
+         z-index) interrupt mid-sequence on mobile. */
+      overflow-x: clip;
+      overflow-y: visible;
     }
 
     .system__intro {
@@ -7303,7 +7308,15 @@
         return Math.round(h * 2.35); /* phone */
       }
 
-      function build() {
+      function notifySystemPinReady() {
+        /* Dependents (philosophy) must remeasure after pin spacer is final. */
+        try {
+          window.dispatchEvent(new CustomEvent("vanta:system-pin-ready"));
+        } catch (errNotify) {}
+      }
+
+      function build(options) {
+        var silent = options && options.silent;
         if (timeline) {
           if (timeline.scrollTrigger) timeline.scrollTrigger.kill();
           timeline.kill();
@@ -7405,22 +7418,26 @@
             duration: 0.06,
           }, 0.94);
         }
+
+        if (!silent) notifySystemPinReady();
       }
 
-      build();
+      build({ silent: true });
 
       let resizeTimer;
       window.addEventListener("resize", () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-          build();
+          build({ silent: true });
           ScrollTrigger.refresh();
+          notifySystemPinReady();
         }, 150);
       });
 
       window.addEventListener("load", () => {
-        build();
+        build({ silent: true });
         ScrollTrigger.refresh();
+        notifySystemPinReady();
       }, { once: true });
     })();
   </script>
@@ -7491,21 +7508,49 @@
 
       gsap.registerPlugin(ScrollTrigger);
 
+      function statementScrollBounds() {
+        /*
+          Natural "top top" → "bottom bottom" distance from the section box,
+          but never begin before system-horizontal has fully ended. This uses
+          live pin geometry (not a magic pixel offset).
+        */
+        var sys = ScrollTrigger.getById("system-horizontal");
+        var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+        var naturalStart = Math.round(section.getBoundingClientRect().top + scrollY);
+        var revealDist = Math.max(
+          1,
+          Math.round(section.offsetHeight - (window.innerHeight || 0))
+        );
+        var start = naturalStart;
+        if (sys && typeof sys.end === "number") {
+          start = Math.max(naturalStart, Math.round(sys.end));
+        }
+        return { start: start, end: start + revealDist };
+      }
+
+      var rebuilding = false;
+
       function build() {
+        if (rebuilding) return;
+        rebuilding = true;
         var existing = ScrollTrigger.getById("vanta-statement-reveal");
         if (existing) existing.kill(true);
 
         ScrollTrigger.create({
           id: "vanta-statement-reveal",
           trigger: section,
-          start: "top top",
-          end: "bottom bottom",
+          start: function () {
+            return statementScrollBounds().start;
+          },
+          end: function () {
+            return statementScrollBounds().end;
+          },
           /* CSS sticky is unreliable under body overflow-x; pin keeps copy viewport-centered */
           pin: sticky,
           pinSpacing: false,
           scrub: true,
           invalidateOnRefresh: true,
-          anticipatePin: 1,
+          anticipatePin: 0.5,
           onUpdate: function (self) {
             paintProgress(self.progress);
           },
@@ -7515,29 +7560,28 @@
         });
 
         paintProgress(0);
+        rebuilding = false;
       }
 
+      /* Initial create — will be rebuilt once System pin geometry is final */
       build();
+
+      var readyTimer;
+      function onSystemPinReady() {
+        clearTimeout(readyTimer);
+        readyTimer = setTimeout(function () {
+          build();
+          ScrollTrigger.refresh();
+        }, 0);
+      }
+
+      window.addEventListener("vanta:system-pin-ready", onSystemPinReady);
 
       if (typeof mqMobile.addEventListener === "function") {
         mqMobile.addEventListener("change", function () {
-          paintProgress(
-            ScrollTrigger.getById("vanta-statement-reveal")
-              ? ScrollTrigger.getById("vanta-statement-reveal").progress
-              : 0
-          );
+          onSystemPinReady();
         });
       }
-
-      window.addEventListener(
-        "load",
-        function () {
-          ScrollTrigger.refresh();
-          build();
-          ScrollTrigger.refresh();
-        },
-        { once: true }
-      );
     })();
   </script>
   <script>
