@@ -1,9 +1,17 @@
 # Local proof / capture tooling (not production)
 _s*_proof/
+_s*_mobile_proof/
 _hero_proof/
+_hero_mobile_proof/
+_mobile_audit/
+_qa_phase14/
+_qa_*/
 _tools/
 .tools/
 _s10_fg_preview.jpg
+_debug_*/
+_s11_*/
+_s12_*/
 
 # Editor / OS
 .DS_Store
