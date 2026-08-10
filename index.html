@@ -5352,23 +5352,13 @@
       }
 
       .site-footer__mark {
-        /*
-          Center max-content box in the clip wrap. Clash Display edge glyphs
-          hang past advance — padding-inline absorbs ink. left is the GSAP-safe
-          translateX equivalent (footer reveal animates y only). 29vw is the
-          smallest trim from approved 32vw that clears both V and final A.
-        */
-        font-size: clamp(6rem, 29vw, 11rem);
+        /* Fit full VANTA ink inside clipped wrap — keep editorial scale */
+        font-size: clamp(6rem, 27.5vw, 11rem);
         letter-spacing: -0.045em;
         line-height: 0.76;
         width: max-content;
         max-width: none;
         margin-inline: auto;
-        padding-left: 0.06em;
-        padding-right: 0.2em;
-        box-sizing: content-box;
-        position: relative;
-        left: -0.05em;
       }
 
       .site-footer__meta {
