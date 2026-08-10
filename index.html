@@ -5572,7 +5572,7 @@
 
       <div class="nav__aside">
         <span class="nav__meta-mini">Scottsdale</span>
-        <a class="nav__apply" href="mailto:hello@vanta.club?subject=VANTA%20Membership%20Application">
+        <a class="nav__apply" href="#membership">
           Apply <span aria-hidden="true">→</span>
         </a>
       </div>
@@ -5601,7 +5601,7 @@
           <p class="hero__lede">
             Private performance training for people who expect more from themselves.
           </p>
-          <a class="hero__cta" id="apply" href="mailto:hello@vanta.club?subject=VANTA%20Membership%20Application">
+          <a class="hero__cta" id="apply" href="#membership">
             Apply for Membership
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M2.5 8h11M9.5 3.5 14 8l-4.5 4.5" stroke="currentColor" stroke-width="1.25" />
@@ -6633,9 +6633,11 @@
         }, delay);
       }
 
-      if (nav) {
-        nav.addEventListener("click", function (event) {
-          const link = event.target.closest("a.nav__link");
+      const hero = document.querySelector("[data-hero]");
+      const hashNavRoot = hero || nav;
+      if (hashNavRoot) {
+        hashNavRoot.addEventListener("click", function (event) {
+          const link = event.target.closest("a.nav__link, a.nav__apply, a.hero__cta");
           if (!link || event.defaultPrevented || event.button !== 0) return;
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
